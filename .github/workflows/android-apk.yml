@@ -1,0 +1,90 @@
+name: Build ScamShield Android APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "ScamShieldMobile/**"
+      - ".github/workflows/android-apk.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build and package Android APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Install Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Install MAUI Android workload
+        run: dotnet workload install maui-android
+
+      - name: Create temporary demo signing key
+        run: |
+          keytool -genkeypair -v \
+            -keystore "$RUNNER_TEMP/scamshield-demo.keystore" \
+            -storepass "DemoOnly-ScamShield-2026" \
+            -keypass "DemoOnly-ScamShield-2026" \
+            -alias scamshield \
+            -keyalg RSA -keysize 2048 -validity 10000 \
+            -dname "CN=ScamShield Demo, OU=Android, O=ScamShield, C=RS"
+
+      - name: Restore and publish APK
+        run: |
+          dotnet publish ScamShieldMobile/ScamShieldMobile.csproj \
+            -f net10.0-android \
+            -c Release \
+            -p:AndroidPackageFormat=apk \
+            -p:AndroidKeyStore=true \
+            -p:AndroidSigningKeyStore="$RUNNER_TEMP/scamshield-demo.keystore" \
+            -p:AndroidSigningKeyAlias=scamshield \
+            -p:AndroidSigningKeyPass="DemoOnly-ScamShield-2026" \
+            -p:AndroidSigningStorePass="DemoOnly-ScamShield-2026"
+
+      - name: Validate and stage APK
+        run: |
+          mkdir -p artifacts
+          APK="$(find ScamShieldMobile/bin/Release/net10.0-android -type f -name '*.apk' | head -n 1)"
+          if [ -z "$APK" ]; then
+            echo "No APK was produced."
+            find ScamShieldMobile/bin/Release/net10.0-android -maxdepth 5 -type f | head -100
+            exit 1
+          fi
+          cp "$APK" artifacts/ScamShield.apk
+          file artifacts/ScamShield.apk
+          unzip -t artifacts/ScamShield.apk
+          sha256sum artifacts/ScamShield.apk
+
+      - name: Upload APK build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ScamShield-Android-APK
+          path: artifacts/ScamShield.apk
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Publish private GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: android-build-${{ github.run_number }}
+          name: ScamShield Android build ${{ github.run_number }}
+          prerelease: true
+          generate_release_notes: true
+          files: artifacts/ScamShield.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
