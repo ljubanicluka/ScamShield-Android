@@ -265,7 +265,7 @@ public sealed class MainPage : ContentPage
             if (file is null) return;
             await using var stream = await file.OpenReadAsync();
             var result = await BarcodeReader.DecodeAsync(stream);
-            var value = result?.Value;
+            var value = result?.FirstOrDefault()?.Value;
             if (string.IsNullOrWhiteSpace(value))
             {
                 await DisplayAlert("QR nije pronađen", "Na izabranoj slici nije pronađen čitljiv QR kod.", "U redu");
