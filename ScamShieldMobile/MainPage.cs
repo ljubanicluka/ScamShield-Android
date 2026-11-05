@@ -232,6 +232,7 @@ public sealed class MainPage : ContentPage
             }
             else await DisplayAlert("Dozvola potrebna", "Dozvoli pristup kameri u Android podešavanjima da bi skener radio.", "U redu");
         }, true));
+        cameraBox.Add(ActionButton("Uvezi QR sa slike", ImportQrImage, false));
         _body.Add(cameraBox);
         _scanValue = new Label { Text = "Sadržaj QR koda pojaviće se ovde.", FontSize = 13, TextColor = Muted };
         _scanAssessment = new Label { Text = "Čeka se skeniranje.", FontSize = 14, FontAttributes = FontAttributes.Bold, TextColor = TextColor() };
@@ -250,6 +251,33 @@ public sealed class MainPage : ContentPage
             if (_scanValue is not null) _scanValue.Text = value;
             if (_scanAssessment is not null) _scanAssessment.Text = Assess(value);
         });
+    }
+
+    private async void ImportQrImage()
+    {
+        try
+        {
+            var file = await FilePicker.Default.PickAsync(new PickOptions
+            {
+                PickerTitle = "Izaberi QR kod ili screenshot",
+                FileTypes = FilePickerFileType.Images
+            });
+            if (file is null) return;
+            await using var stream = await file.OpenReadAsync();
+            var result = await BarcodeReader.DecodeAsync(stream);
+            var value = result?.Value;
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                await DisplayAlert("QR nije pronađen", "Na izabranoj slici nije pronađen čitljiv QR kod.", "U redu");
+                return;
+            }
+            if (_scanValue is not null) _scanValue.Text = value;
+            if (_scanAssessment is not null) _scanAssessment.Text = Assess(value);
+        }
+        catch (Exception ex)
+        {
+            await DisplayAlert("Uvoz nije uspeo", "Nije moguće pročitati sliku. Pokušaj drugi screenshot ili kameru.\n" + ex.Message, "U redu");
+        }
     }
 
     private void BuildCheck()
