@@ -362,11 +362,11 @@ public sealed class MainPage : ContentPage
 
     private Label SectionLabel(string text) => new() { Text = text.ToUpperInvariant(), FontSize = 10, CharacterSpacing = 1.4, FontAttributes = FontAttributes.Bold, TextColor = _dark ? Yellow : Blue };
     private Label Bullet(string text) => new() { Text = "•  " + text, FontSize = 13, TextColor = TextColor() };
-    private Frame Card(params View[] children)
+    private VerticalStackLayout Card(params View[] children)
     {
-        var stack = new VerticalStackLayout { Spacing = 10 };
+        var stack = new VerticalStackLayout { Spacing = 10, Padding = 16, BackgroundColor = CardColor() };
         foreach (var child in children) stack.Add(child);
-        return new Frame { Content = stack, Padding = 16, CornerRadius = 18, HasShadow = false, BackgroundColor = CardColor(), BorderColor = _dark ? Color.FromArgb("#26364D") : Color.FromArgb("#E2E8F0") };
+        return stack;
     }
     private Button ActionButton(string text, Action action, bool primary)
     {
