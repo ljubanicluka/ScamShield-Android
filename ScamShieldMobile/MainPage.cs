@@ -328,7 +328,7 @@ public sealed class MainPage : ContentPage
             Preferences.Remove("setup_complete");
             Content = BuildOnboarding();
         }, false));
-        _body.Add(new Label { Text = "Privatnost: profil i demo objave ostaju lokalno na uređaju. Nema naloga, sinhronizacije ni daljinskog nadzora u ovom APK-u.", FontSize = 11, TextColor = Muted));
+        _body.Add(new Label { Text = "Privatnost: profil i demo objave ostaju lokalno na uređaju. Nema naloga, sinhronizacije ni daljinskog nadzora u ovom APK-u.", FontSize = 11, TextColor = Muted });
     }
 
     private string Assess(string value)
