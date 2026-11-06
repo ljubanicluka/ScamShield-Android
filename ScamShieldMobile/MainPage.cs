@@ -62,7 +62,12 @@ public sealed class MainPage : ContentPage
     private View BuildOnboarding()
     {
         var nameEntry = new Entry { Placeholder = "Korisničko ime (npr. luka)", Text = _name, BackgroundColor = CardColor(), TextColor = TextColor(), PlaceholderColor = Muted, MaxLength = 32 };
-        var countryPicker = new Picker { Title = "Izaberi državu", TextColor = TextColor(), BackgroundColor = CardColor(), ItemsSource = new List<string> { "Srbija", "Bosna i Hercegovina", "Crna Gora", "Severna Makedonija", "Drugo" }, SelectedItem = _country };
+        nameEntry.TextChanged += (_, args) =>
+        {
+            var normalized = (args.NewTextValue ?? "").ToLowerInvariant();
+            if (normalized != args.NewTextValue) nameEntry.Text = normalized;
+        };
+        var countryPicker = new Picker { Title = "Izaberi državu", TextColor = TextColor(), BackgroundColor = CardColor(), ItemsSource = new List<string> { "Srbija", "Bosna i Hercegovina", "Crna Gora", "Severna Makedonija", "Drugo" }, SelectedItem = Ui(_country) };
         var birthYearEntry = new Entry { Placeholder = "Godina rođenja (npr. 2009)", Text = _birthYear, Keyboard = Keyboard.Numeric, BackgroundColor = CardColor(), TextColor = TextColor(), PlaceholderColor = Muted, MaxLength = 4 };
         var intro = new VerticalStackLayout { Spacing = 12, Padding = 24, VerticalOptions = LayoutOptions.Center };
         intro.Add(new Label { Text = "SCAMSHIELD", FontSize = 13, CharacterSpacing = 3, TextColor = _dark ? Yellow : Blue, FontAttributes = FontAttributes.Bold });
@@ -79,7 +84,7 @@ public sealed class MainPage : ContentPage
         intro.Add(ActionButton("Nastavi", () =>
         {
             _name = NormalizeUsername(nameEntry.Text);
-            _country = countryPicker.SelectedItem?.ToString() ?? "Srbija";
+            _country = SerbianCyrillicToLatin(countryPicker.SelectedItem?.ToString() ?? "Srbija");
             var yearText = (birthYearEntry.Text ?? "").Trim();
             if (!string.IsNullOrWhiteSpace(yearText) &&
                 (!int.TryParse(yearText, out var parsedYear) || parsedYear < 1900 || parsedYear > DateTime.Now.Year))
@@ -506,6 +511,27 @@ public sealed class MainPage : ContentPage
             .Replace('z', 'з').Replace('ž', 'ж');
     }
 
+    private static string SerbianCyrillicToLatin(string value)
+    {
+        if (string.IsNullOrEmpty(value)) return value;
+        return value
+            .Replace("Џ", "Dž", StringComparison.Ordinal).Replace("џ", "dž", StringComparison.Ordinal)
+            .Replace("Љ", "Lj", StringComparison.Ordinal).Replace("љ", "lj", StringComparison.Ordinal)
+            .Replace("Њ", "Nj", StringComparison.Ordinal).Replace("њ", "nj", StringComparison.Ordinal)
+            .Replace('А', 'A').Replace('Б', 'B').Replace('В', 'V').Replace('Г', 'G').Replace('Д', 'D')
+            .Replace('Ђ', 'Đ').Replace('Е', 'E').Replace('Ж', 'Ž').Replace('З', 'Z').Replace('И', 'I')
+            .Replace('Ј', 'J').Replace('К', 'K').Replace('Л', 'L').Replace('М', 'M').Replace('Н', 'N')
+            .Replace('О', 'O').Replace('П', 'P').Replace('Р', 'R').Replace('С', 'S').Replace('Т', 'T')
+            .Replace('Ћ', 'Ć').Replace('У', 'U').Replace('Ф', 'F').Replace('Х', 'H').Replace('Ц', 'C')
+            .Replace('Ч', 'Č').Replace('Ш', 'Š')
+            .Replace('а', 'a').Replace('б', 'b').Replace('в', 'v').Replace('г', 'g').Replace('д', 'd')
+            .Replace('ђ', 'đ').Replace('е', 'e').Replace('ж', 'ž').Replace('з', 'z').Replace('и', 'i')
+            .Replace('ј', 'j').Replace('к', 'k').Replace('л', 'l').Replace('м', 'm').Replace('н', 'n')
+            .Replace('о', 'o').Replace('п', 'p').Replace('р', 'r').Replace('с', 's').Replace('т', 't')
+            .Replace('ћ', 'ć').Replace('у', 'u').Replace('ф', 'f').Replace('х', 'h').Replace('ц', 'c')
+            .Replace('ч', 'č').Replace('ш', 'š');
+    }
+
     private void ApplyScriptToView(View? view)
     {
         if (!_useCyrillic || view is null) return;
@@ -526,7 +552,11 @@ public sealed class MainPage : ContentPage
             case Picker picker:
                 picker.Title = SerbianLatinToCyrillic(picker.Title ?? "");
                 if (picker.ItemsSource is IEnumerable<string> items)
+                {
                     picker.ItemsSource = items.Select(SerbianLatinToCyrillic).ToList();
+                    if (picker.SelectedItem is string selected)
+                        picker.SelectedItem = SerbianLatinToCyrillic(selected);
+                }
                 break;
         }
 
