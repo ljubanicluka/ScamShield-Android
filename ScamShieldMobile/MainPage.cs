@@ -16,12 +16,15 @@ public sealed class MainPage : ContentPage
     private readonly Color LightCard = Colors.White;
     private readonly Color DarkBg = Color.FromArgb("#0B1220");
     private readonly Color DarkCard = Color.FromArgb("#151F31");
-    private readonly Grid _shell = new();
-    private readonly VerticalStackLayout _body = new() { Spacing = 14, Padding = new Thickness(16, 12) };
+    private Grid _shell = new();
+    private VerticalStackLayout _body = new() { Spacing = 14, Padding = new Thickness(16, 12) };
     private readonly ObservableCollection<CommunityPost> _posts = new();
     private CameraBarcodeReaderView? _camera;
     private Label? _scanValue;
     private Label? _scanAssessment;
+    private Label? _cameraStatus;
+    private bool _useCyrillic;
+    private string _birthYear = "";
     private bool _dark;
     private string _name = "korisnik";
     private string _country = "Srbija";
@@ -34,6 +37,8 @@ public sealed class MainPage : ContentPage
         _name = Preferences.Get("profile_name", "korisnik");
         _country = Preferences.Get("profile_country", "Srbija");
         _dark = Preferences.Get("dark_theme", false);
+        _useCyrillic = Preferences.Get("use_cyrillic", false);
+        _birthYear = Preferences.Get("birth_year", "");
         SeedCommunity();
 
         if (Preferences.Get("setup_complete", false))
@@ -56,25 +61,36 @@ public sealed class MainPage : ContentPage
 
     private View BuildOnboarding()
     {
-        var nameEntry = new Entry { Placeholder = "Kako da te zovemo?", Text = _name, BackgroundColor = CardColor(), TextColor = TextColor(), PlaceholderColor = Muted };
+        var nameEntry = new Entry { Placeholder = "Korisničko ime (npr. luka)", Text = _name, BackgroundColor = CardColor(), TextColor = TextColor(), PlaceholderColor = Muted, MaxLength = 32 };
         var countryPicker = new Picker { Title = "Izaberi državu", TextColor = TextColor(), BackgroundColor = CardColor(), ItemsSource = new List<string> { "Srbija", "Bosna i Hercegovina", "Crna Gora", "Severna Makedonija", "Drugo" }, SelectedItem = _country };
-        var agePicker = new Picker { Title = "Uzrast (opciono)", TextColor = TextColor(), BackgroundColor = CardColor(), ItemsSource = new List<string> { "Ispod 18", "18–24", "25–44", "45–64", "65+" } };
+        var birthYearEntry = new Entry { Placeholder = "Godina rođenja (npr. 2009)", Text = _birthYear, Keyboard = Keyboard.Numeric, BackgroundColor = CardColor(), TextColor = TextColor(), PlaceholderColor = Muted, MaxLength = 4 };
         var intro = new VerticalStackLayout { Spacing = 12, Padding = 24, VerticalOptions = LayoutOptions.Center };
         intro.Add(new Label { Text = "SCAMSHIELD", FontSize = 13, CharacterSpacing = 3, TextColor = _dark ? Yellow : Blue, FontAttributes = FontAttributes.Bold });
         intro.Add(new Label { Text = "Prepoznaj prevaru.\nPomozi drugima.", FontSize = 32, FontAttributes = FontAttributes.Bold, TextColor = TextColor(), LineBreakMode = LineBreakMode.WordWrap });
         intro.Add(new Label { Text = "Zajednica i bezbednosni alati na jednom mestu. Podešavanja možeš promeniti kasnije.", FontSize = 15, TextColor = Muted });
         intro.Add(SectionLabel("Kako da podesimo ScamShield"));
+        intro.Add(new Label { Text = "Korisničko ime", FontSize = 13, FontAttributes = FontAttributes.Bold, TextColor = TextColor() });
         intro.Add(nameEntry);
+        intro.Add(new Label { Text = "Država", FontSize = 13, FontAttributes = FontAttributes.Bold, TextColor = TextColor() });
         intro.Add(countryPicker);
-        intro.Add(agePicker);
-        intro.Add(new Label { Text = "Podaci profila ostaju na ovom uređaju u demo verziji. Ne tražimo pol, datum rođenja ni adresu.", FontSize = 12, TextColor = Muted });
+        intro.Add(new Label { Text = "Godina rođenja (opciono)", FontSize = 13, FontAttributes = FontAttributes.Bold, TextColor = TextColor() });
+        intro.Add(birthYearEntry);
+        intro.Add(new Label { Text = "Koristi se samo za prikaz približne uzrasne grupe. Ne prikazuje se javno i čuva se lokalno na ovom uređaju.", FontSize = 12, TextColor = Muted });
         intro.Add(ActionButton("Nastavi", () =>
         {
-            _name = string.IsNullOrWhiteSpace(nameEntry.Text) ? "korisnik" : nameEntry.Text.Trim();
+            _name = NormalizeUsername(nameEntry.Text);
             _country = countryPicker.SelectedItem?.ToString() ?? "Srbija";
+            var yearText = (birthYearEntry.Text ?? "").Trim();
+            if (!string.IsNullOrWhiteSpace(yearText) &&
+                (!int.TryParse(yearText, out var parsedYear) || parsedYear < 1900 || parsedYear > DateTime.Now.Year))
+            {
+                _ = DisplayAlertAsync("Proveri godinu", $"Unesi godinu između 1900. i {DateTime.Now.Year}, ili ostavi polje prazno.", "U redu");
+                return;
+            }
+            _birthYear = yearText;
             Preferences.Set("profile_name", _name);
             Preferences.Set("profile_country", _country);
-            Preferences.Set("age_band", agePicker.SelectedItem?.ToString() ?? "");
+            Preferences.Set("birth_year", _birthYear);
             Preferences.Set("setup_complete", true);
             BuildShell();
             Navigate("home");
@@ -90,6 +106,9 @@ public sealed class MainPage : ContentPage
 
     private void BuildShell()
     {
+        // Recreate the root and body instead of reparenting controls from an attached native view tree.
+        _shell = new Grid();
+        _body = new VerticalStackLayout { Spacing = 14, Padding = new Thickness(16, 12) };
         _shell.RowDefinitions.Clear();
         _shell.ColumnDefinitions.Clear();
         _shell.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
@@ -129,6 +148,7 @@ public sealed class MainPage : ContentPage
 
     private void Navigate(string tab)
     {
+        if (_camera is not null) _camera.IsDetecting = false;
         _currentTab = tab;
         _body.Clear();
         _body.BackgroundColor = PageColor();
@@ -147,10 +167,11 @@ public sealed class MainPage : ContentPage
         {
             foreach (var child in bar.Children.OfType<Button>())
             {
-                child.BackgroundColor = child.Text == TabLabel(tab) ? Blue : CardColor();
-                child.TextColor = child.Text == TabLabel(tab) ? Colors.White : TextColor();
+                child.BackgroundColor = child.Text == Ui(TabLabel(tab)) ? Blue : CardColor();
+                child.TextColor = child.Text == Ui(TabLabel(tab)) ? Colors.White : TextColor();
             }
         }
+        ApplyScriptToView(_shell);
     }
 
     private string TabLabel(string tab) => tab switch { "home" => "Početna", "community" => "Zajednica", "qr" => "QR", "check" => "Provera", "map" => "Mapa", "family" => "Porodica", _ => "" };
