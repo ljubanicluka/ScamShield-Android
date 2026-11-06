@@ -185,7 +185,7 @@ public sealed class MainPage : ContentPage
 
     private void BuildHome()
     {
-        _body.Add(SectionLabel($"Zdravo, {_name}"));
+        _body.Add(new Label { Text = $"Zdravo, {_name}", FontSize = 14, FontAttributes = FontAttributes.Bold, TextColor = _dark ? Yellow : Blue });
         _body.Add(new Label { Text = "Pre nego što klikneš — proveri.", FontSize = 26, FontAttributes = FontAttributes.Bold, TextColor = TextColor() });
         _body.Add(new Label { Text = "Proveri sumnjiv link, poruku ili QR kod. Iskustva zajednice pomažu drugima da ne naprave istu grešku.", FontSize = 14, TextColor = Muted });
         var hero = Card();
