@@ -170,7 +170,7 @@ public sealed class MainPage : ContentPage
             foreach (var child in bar.Children.OfType<Button>())
             {
                 child.BackgroundColor = child.Text == TabLabel(tab) ? Blue : CardColor();
-                child.TextColor = child.Text == Ui(TabLabel(tab)) ? Colors.White : TextColor();
+                child.TextColor = child.Text == TabLabel(tab) ? Colors.White : TextColor();
             }
         }
         ApplyScriptToView(_shell);
@@ -380,7 +380,7 @@ public sealed class MainPage : ContentPage
             }
 
             var value = decoded.Value;
-            if (_scanValue is not null) _scanValue.Text = Ui(value);
+            if (_scanValue is not null) _scanValue.Text = value;
             if (_scanAssessment is not null) _scanAssessment.Text = Ui(Assess(value));
             if (_cameraStatus is not null) _cameraStatus.Text = Ui("Slika je obrađena.");
         }
@@ -397,7 +397,7 @@ public sealed class MainPage : ContentPage
         _body.Add(new Label { Text = "Nalepi link, broj ili tekst poruke. Analiza se radi lokalno u ovoj demo verziji.", FontSize = 13, TextColor = Muted });
         var input = new Editor { Placeholder = "Nalepi sumnjiv link ili poruku ovde...", MinimumHeightRequest = 120, AutoSize = EditorAutoSizeOption.TextChanges, BackgroundColor = CardColor(), TextColor = TextColor() };
         var result = new Label { Text = "Rezultat će se pojaviti nakon provere.", FontSize = 14, TextColor = Muted };
-        _body.Add(Card(input, ActionButton("Proveri sadržaj", () => result.Text = Assess(input.Text ?? ""), true), result));
+        _body.Add(Card(input, ActionButton("Proveri sadržaj", () => result.Text = Ui(Assess(input.Text ?? "")), true), result));
     }
 
     private void BuildMap()
