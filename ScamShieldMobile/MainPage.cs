@@ -101,7 +101,9 @@ public sealed class MainPage : ContentPage
             BuildShell();
             Navigate("home");
         }, false));
-        return new ScrollView { Content = intro, BackgroundColor = PageColor() };
+        var onboardingScroll = new ScrollView { Content = intro, BackgroundColor = PageColor() };
+        ApplyScriptToView(onboardingScroll);
+        return onboardingScroll;
     }
 
     private void BuildShell()
@@ -167,7 +169,7 @@ public sealed class MainPage : ContentPage
         {
             foreach (var child in bar.Children.OfType<Button>())
             {
-                child.BackgroundColor = child.Text == Ui(TabLabel(tab)) ? Blue : CardColor();
+                child.BackgroundColor = child.Text == TabLabel(tab) ? Blue : CardColor();
                 child.TextColor = child.Text == Ui(TabLabel(tab)) ? Colors.White : TextColor();
             }
         }
@@ -229,7 +231,7 @@ public sealed class MainPage : ContentPage
         var vote = new Button { Text = $"▲  {post.Votes}", FontSize = 12, BackgroundColor = CardColor(), TextColor = TextColor(), CornerRadius = 12 };
         vote.Clicked += (_, _) => { post.Votes++; vote.Text = $"▲  {post.Votes}"; };
         var comments = new Button { Text = $"Komentari ({post.Comments})", FontSize = 12, BackgroundColor = CardColor(), TextColor = TextColor(), CornerRadius = 12 };
-        comments.Clicked += async (_, _) => await DisplayAlert("Komentari", "Komentari su lokalni demonstracioni podaci. Online sinhronizacija još nije povezana.", "U redu");
+        comments.Clicked += async (_, _) => await DisplayAlertAsync("Komentari", "Komentari su lokalni demonstracioni podaci. Online sinhronizacija još nije povezana.", "U redu");
         actions.Add(vote); actions.Add(comments); card.Add(actions);
         return card;
     }
@@ -430,7 +432,8 @@ public sealed class MainPage : ContentPage
         _body.Add(new Label { Text = "Podesi svoj ScamShield", FontSize = 25, FontAttributes = FontAttributes.Bold, TextColor = TextColor() });
         _body.Add(Card(new Label { Text = $"Profil: {_name}", FontSize = 16, FontAttributes = FontAttributes.Bold, TextColor = TextColor() }, new Label { Text = $"Država: {_country}", FontSize = 13, TextColor = Muted }));
         _body.Add(ActionButton(_dark ? "Uključi svetlu temu" : "Uključi tamnu temu", ToggleTheme, false));
-        _body.Add(ActionButton("Promeni jezik (srpski / ćirilica / English)", async () => await DisplayAlert("Jezik", "Promena jezika biće uključena u sledećoj iteraciji. Trenutni interfejs je na srpskom latinicom.", "U redu"), false));
+        _body.Add(ActionButton(_useCyrillic ? "Prikaži latinicu" : "Prikaži ćirilicu", ToggleScript, false));
+        _body.Add(new Label { Text = "Jezik interfejsa: srpski. Engleski prevod još nije uključen.", FontSize = 11, TextColor = Muted });
         _body.Add(ActionButton("Ponovi početno podešavanje", () =>
         {
             Preferences.Remove("setup_complete");
@@ -458,10 +461,85 @@ public sealed class MainPage : ContentPage
 
     private void ToggleTheme()
     {
+        if (_camera is not null) _camera.IsDetecting = false;
         _dark = !_dark;
         Preferences.Set("dark_theme", _dark);
         BuildShell();
         Navigate(_currentTab);
+    }
+
+    private void ToggleScript()
+    {
+        if (_camera is not null) _camera.IsDetecting = false;
+        _useCyrillic = !_useCyrillic;
+        Preferences.Set("use_cyrillic", _useCyrillic);
+        BuildShell();
+        Navigate(_currentTab);
+    }
+
+    private static string NormalizeUsername(string? value)
+    {
+        var username = (value ?? "").Trim().ToLowerInvariant();
+        return string.IsNullOrWhiteSpace(username) ? "korisnik" : username;
+    }
+
+    private string Ui(string value) => _useCyrillic ? SerbianLatinToCyrillic(value) : value;
+
+    private static string SerbianLatinToCyrillic(string value)
+    {
+        if (string.IsNullOrEmpty(value)) return value;
+        return value
+            .Replace("DŽ", "Џ", StringComparison.Ordinal).Replace("Dž", "Џ", StringComparison.Ordinal).Replace("dž", "џ", StringComparison.Ordinal)
+            .Replace("LJ", "Љ", StringComparison.Ordinal).Replace("Lj", "Љ", StringComparison.Ordinal).Replace("lj", "љ", StringComparison.Ordinal)
+            .Replace("NJ", "Њ", StringComparison.Ordinal).Replace("Nj", "Њ", StringComparison.Ordinal).Replace("nj", "њ", StringComparison.Ordinal)
+            .Replace('A', 'А').Replace('B', 'Б').Replace('C', 'Ц').Replace('Č', 'Ч').Replace('Ć', 'Ћ')
+            .Replace('D', 'Д').Replace('Đ', 'Ђ').Replace('E', 'Е').Replace('F', 'Ф').Replace('G', 'Г')
+            .Replace('H', 'Х').Replace('I', 'И').Replace('J', 'Ј').Replace('K', 'К').Replace('L', 'Л')
+            .Replace('M', 'М').Replace('N', 'Н').Replace('O', 'О').Replace('P', 'П').Replace('R', 'Р')
+            .Replace('S', 'С').Replace('Š', 'Ш').Replace('T', 'Т').Replace('U', 'У').Replace('V', 'В')
+            .Replace('Z', 'З').Replace('Ž', 'Ж')
+            .Replace('a', 'а').Replace('b', 'б').Replace('c', 'ц').Replace('č', 'ч').Replace('ć', 'ћ')
+            .Replace('d', 'д').Replace('đ', 'ђ').Replace('e', 'е').Replace('f', 'ф').Replace('g', 'г')
+            .Replace('h', 'х').Replace('i', 'и').Replace('j', 'ј').Replace('k', 'к').Replace('l', 'л')
+            .Replace('m', 'м').Replace('n', 'н').Replace('o', 'о').Replace('p', 'п').Replace('r', 'р')
+            .Replace('s', 'с').Replace('š', 'ш').Replace('t', 'т').Replace('u', 'у').Replace('v', 'в')
+            .Replace('z', 'з').Replace('ž', 'ж');
+    }
+
+    private void ApplyScriptToView(View? view)
+    {
+        if (!_useCyrillic || view is null) return;
+        switch (view)
+        {
+            case Label label:
+                label.Text = SerbianLatinToCyrillic(label.Text ?? "");
+                break;
+            case Button button:
+                button.Text = SerbianLatinToCyrillic(button.Text ?? "");
+                break;
+            case Entry entry:
+                entry.Placeholder = SerbianLatinToCyrillic(entry.Placeholder ?? "");
+                break;
+            case Editor editor:
+                editor.Placeholder = SerbianLatinToCyrillic(editor.Placeholder ?? "");
+                break;
+            case Picker picker:
+                picker.Title = SerbianLatinToCyrillic(picker.Title ?? "");
+                if (picker.ItemsSource is IEnumerable<string> items)
+                    picker.ItemsSource = items.Select(SerbianLatinToCyrillic).ToList();
+                break;
+        }
+
+        if (view is ScrollView scroll && scroll.Content is View scrollContent)
+            ApplyScriptToView(scrollContent);
+        else if (view is ContentView contentView && contentView.Content is View content)
+            ApplyScriptToView(content);
+
+        if (view is Layout layout)
+        {
+            foreach (var child in layout.Children)
+                if (child is View childView) ApplyScriptToView(childView);
+        }
     }
 
     private Color PageColor() => _dark ? DarkBg : Color.FromArgb("#F3F6FB");
