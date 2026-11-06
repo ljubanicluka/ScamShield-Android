@@ -238,66 +238,153 @@ public sealed class MainPage : ContentPage
     {
         _body.Add(SectionLabel("QR ZAŠTITA"));
         _body.Add(new Label { Text = "Skeniraj pre nego što otvoriš.", FontSize = 25, FontAttributes = FontAttributes.Bold, TextColor = TextColor() });
-        _body.Add(new Label { Text = "Usmeri kameru ka QR kodu. Prikazaćemo sadržaj i proveriti osnovne znakove rizika. Ništa se ne otvara automatski.", FontSize = 13, TextColor = Muted });
+        _body.Add(new Label { Text = "Usmeri kameru ka QR kodu. Rezultat se prikazuje ovde; nijedan link se ne otvara automatski.", FontSize = 13, TextColor = Muted });
+
         var cameraBox = Card();
-        _camera = new CameraBarcodeReaderView { HeightRequest = 300, IsDetecting = false, Options = new BarcodeReaderOptions { Formats = BarcodeFormats.TwoDimensional, AutoRotate = true, Multiple = false } };
+        _camera = new CameraBarcodeReaderView
+        {
+            HeightRequest = 280,
+            HorizontalOptions = LayoutOptions.Fill,
+            VerticalOptions = LayoutOptions.Center,
+            CameraLocation = CameraLocation.Rear,
+            IsDetecting = false,
+            Options = new BarcodeReaderOptions
+            {
+                Formats = BarcodeFormats.TwoDimensional,
+                AutoRotate = true,
+                TryHarder = true,
+                Multiple = false,
+                DelayBetweenAnalyzingFrames = 100,
+                InitialDelayBeforeAnalyzingFrames = 250,
+                DelayBetweenContinuousScans = 900
+            }
+        };
         _camera.BarcodesDetected += OnBarcodesDetected;
         cameraBox.Add(_camera);
-        cameraBox.Add(ActionButton("Pokreni kameru", async () =>
+        _cameraStatus = new Label { Text = "Kamera nije pokrenuta.", FontSize = 12, TextColor = Muted };
+        cameraBox.Add(_cameraStatus);
+        cameraBox.Add(ActionButton("Pokreni / nastavi skeniranje", () => _ = StartCameraAsync(), true));
+        var cameraActions = new Grid
         {
-            var permission = await Permissions.RequestAsync<Permissions.Camera>();
-            if (permission == PermissionStatus.Granted && _camera is not null)
-            {
-                _camera.IsDetecting = true;
-                await DisplayAlert("Kamera aktivna", "Drži QR kod unutar okvira. Link se neće otvoriti.", "U redu");
-            }
-            else await DisplayAlert("Dozvola potrebna", "Dozvoli pristup kameri u Android podešavanjima da bi skener radio.", "U redu");
-        }, true));
-        cameraBox.Add(ActionButton("Uvezi QR sa slike", ImportQrImage, false));
+            ColumnDefinitions = { new ColumnDefinition(GridLength.Star), new ColumnDefinition(GridLength.Star) },
+            ColumnSpacing = 8
+        };
+        cameraActions.Add(ActionButton("Zaustavi kameru", StopCamera, false), 0, 0);
+        cameraActions.Add(ActionButton("Blic", ToggleTorch, false), 1, 0);
+        cameraBox.Add(cameraActions);
+        cameraBox.Add(ActionButton("Uvezi QR sa slike", () => _ = ImportQrImageAsync(), false));
         _body.Add(cameraBox);
+
         _scanValue = new Label { Text = "Sadržaj QR koda pojaviće se ovde.", FontSize = 13, TextColor = Muted };
         _scanAssessment = new Label { Text = "Čeka se skeniranje.", FontSize = 14, FontAttributes = FontAttributes.Bold, TextColor = TextColor() };
-        var result = Card(new Label { Text = "Rezultat analize", FontSize = 17, FontAttributes = FontAttributes.Bold, TextColor = TextColor() }, _scanAssessment, _scanValue);
-        _body.Add(result);
-        _body.Add(new Label { Text = "Napomena: ova verzija radi lokalnu heurističku proveru. Nije izolovana virtuelna mašina niti zamena za proveru domena kod pouzdanog servisa.", FontSize = 11, TextColor = Muted });
+        _body.Add(Card(
+            new Label { Text = "Rezultat analize", FontSize = 17, FontAttributes = FontAttributes.Bold, TextColor = TextColor() },
+            _scanAssessment,
+            _scanValue));
+        _body.Add(new Label { Text = "Napomena: ovo je lokalna heuristička provera, ne udaljena reputaciona baza niti izolovana virtuelna mašina.", FontSize = 11, TextColor = Muted });
+    }
+
+    private async Task StartCameraAsync()
+    {
+        try
+        {
+            if (!BarcodeScanning.IsSupported)
+            {
+                if (_cameraStatus is not null) _cameraStatus.Text = Ui("Ovaj uređaj ne prijavljuje dostupnu kameru.");
+                await DisplayAlertAsync("Kamera nije dostupna", "Uređaj ili sistem trenutno ne podržava pristup kameri.", "U redu");
+                return;
+            }
+
+            var permission = await Permissions.CheckStatusAsync<Permissions.Camera>();
+            if (permission != PermissionStatus.Granted)
+                permission = await Permissions.RequestAsync<Permissions.Camera>();
+
+            if (permission != PermissionStatus.Granted)
+            {
+                if (_cameraStatus is not null) _cameraStatus.Text = Ui("Dozvola za kameru nije odobrena.");
+                await DisplayAlertAsync("Dozvola potrebna", "Dozvoli ScamShield-u pristup kameri u Android podešavanjima, pa pokušaj ponovo.", "U redu");
+                return;
+            }
+
+            if (_camera is null) return;
+            _camera.CameraLocation = CameraLocation.Rear;
+            _camera.IsDetecting = true;
+            if (_cameraStatus is not null) _cameraStatus.Text = Ui("Kamera je aktivna. Drži QR kod mirno unutar kadra.");
+        }
+        catch (Exception ex)
+        {
+            if (_cameraStatus is not null) _cameraStatus.Text = Ui("Kamera nije mogla da se pokrene.");
+            await DisplayAlertAsync("Greška kamere", ex.Message, "U redu");
+        }
+    }
+
+    private void StopCamera()
+    {
+        if (_camera is not null) _camera.IsDetecting = false;
+        if (_cameraStatus is not null) _cameraStatus.Text = Ui("Kamera je zaustavljena.");
+    }
+
+    private void ToggleTorch()
+    {
+        if (_camera is null || !_camera.IsDetecting)
+        {
+            if (_cameraStatus is not null) _cameraStatus.Text = Ui("Pokreni kameru pre uključivanja blica.");
+            return;
+        }
+        _camera.IsTorchOn = !_camera.IsTorchOn;
     }
 
     private void OnBarcodesDetected(object? sender, BarcodeDetectionEventArgs e)
     {
-        var value = e.Results?.FirstOrDefault()?.Value;
+        var value = e.Results?.FirstOrDefault(result => !string.IsNullOrWhiteSpace(result.Value))?.Value;
         if (string.IsNullOrWhiteSpace(value)) return;
+
         MainThread.BeginInvokeOnMainThread(() =>
         {
             if (_camera is not null) _camera.IsDetecting = false;
-            if (_scanValue is not null) _scanValue.Text = value;
-            if (_scanAssessment is not null) _scanAssessment.Text = Assess(value);
+            if (_cameraStatus is not null) _cameraStatus.Text = Ui("QR kod je prepoznat. Kamera je pauzirana.");
+            if (_scanValue is not null) _scanValue.Text = Ui(value);
+            if (_scanAssessment is not null) _scanAssessment.Text = Ui(Assess(value));
         });
     }
 
-    private async void ImportQrImage()
+    private async Task ImportQrImageAsync()
     {
         try
         {
             var file = await FilePicker.Default.PickAsync(new PickOptions
             {
-                PickerTitle = "Izaberi QR kod ili screenshot",
+                PickerTitle = Ui("Izaberi QR kod ili screenshot"),
                 FileTypes = FilePickerFileType.Images
             });
             if (file is null) return;
+
             await using var stream = await file.OpenReadAsync();
-            var result = await BarcodeReader.DecodeAsync(stream);
-            var value = result?.FirstOrDefault()?.Value;
-            if (string.IsNullOrWhiteSpace(value))
+            var results = await BarcodeReader.DecodeAsync(
+                stream,
+                new BarcodeReaderOptions
+                {
+                    Formats = BarcodeFormats.All,
+                    AutoRotate = true,
+                    TryHarder = true,
+                    Multiple = true
+                });
+
+            var decoded = results?.FirstOrDefault(result => !string.IsNullOrWhiteSpace(result.Value));
+            if (decoded is null)
             {
-                await DisplayAlert("QR nije pronađen", "Na izabranoj slici nije pronađen čitljiv QR kod.", "U redu");
+                await DisplayAlertAsync("QR nije pronađen", "Na slici nije pronađen čitljiv QR/bar-kod. Probaj originalnu sliku, ne zamućen screenshot ili isečak.", "U redu");
                 return;
             }
-            if (_scanValue is not null) _scanValue.Text = value;
-            if (_scanAssessment is not null) _scanAssessment.Text = Assess(value);
+
+            var value = decoded.Value;
+            if (_scanValue is not null) _scanValue.Text = Ui(value);
+            if (_scanAssessment is not null) _scanAssessment.Text = Ui(Assess(value));
+            if (_cameraStatus is not null) _cameraStatus.Text = Ui("Slika je obrađena.");
         }
         catch (Exception ex)
         {
-            await DisplayAlert("Uvoz nije uspeo", "Nije moguće pročitati sliku. Pokušaj drugi screenshot ili kameru.\n" + ex.Message, "U redu");
+            await DisplayAlertAsync("Uvoz nije uspeo", "Nije moguće obraditi izabranu sliku.\\n" + ex.Message, "U redu");
         }
     }
 
