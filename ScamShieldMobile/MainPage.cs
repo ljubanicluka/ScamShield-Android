@@ -231,7 +231,7 @@ public sealed class MainPage : ContentPage
         var vote = new Button { Text = $"▲  {post.Votes}", FontSize = 12, BackgroundColor = CardColor(), TextColor = TextColor(), CornerRadius = 12 };
         vote.Clicked += (_, _) => { post.Votes++; vote.Text = $"▲  {post.Votes}"; };
         var comments = new Button { Text = $"Komentari ({post.Comments})", FontSize = 12, BackgroundColor = CardColor(), TextColor = TextColor(), CornerRadius = 12 };
-        comments.Clicked += async (_, _) => await DisplayAlertAsync("Komentari", "Komentari su lokalni demonstracioni podaci. Online sinhronizacija još nije povezana.", "U redu");
+        comments.Clicked += async (_, _) => await DisplayAlertAsync(Ui("Komentari"), Ui("Komentari su lokalni demonstracioni podaci. Online sinhronizacija još nije povezana."), Ui("U redu"));
         actions.Add(vote); actions.Add(comments); card.Add(actions);
         return card;
     }
@@ -293,7 +293,7 @@ public sealed class MainPage : ContentPage
             if (!BarcodeScanning.IsSupported)
             {
                 if (_cameraStatus is not null) _cameraStatus.Text = Ui("Ovaj uređaj ne prijavljuje dostupnu kameru.");
-                await DisplayAlertAsync("Kamera nije dostupna", "Uređaj ili sistem trenutno ne podržava pristup kameri.", "U redu");
+                await DisplayAlertAsync(Ui("Kamera nije dostupna"), Ui("Uređaj ili sistem trenutno ne podržava pristup kameri."), Ui("U redu"));
                 return;
             }
 
@@ -304,7 +304,7 @@ public sealed class MainPage : ContentPage
             if (permission != PermissionStatus.Granted)
             {
                 if (_cameraStatus is not null) _cameraStatus.Text = Ui("Dozvola za kameru nije odobrena.");
-                await DisplayAlertAsync("Dozvola potrebna", "Dozvoli ScamShield-u pristup kameri u Android podešavanjima, pa pokušaj ponovo.", "U redu");
+                await DisplayAlertAsync(Ui("Dozvola potrebna"), Ui("Dozvoli ScamShield-u pristup kameri u Android podešavanjima, pa pokušaj ponovo."), Ui("U redu"));
                 return;
             }
 
@@ -316,7 +316,7 @@ public sealed class MainPage : ContentPage
         catch (Exception ex)
         {
             if (_cameraStatus is not null) _cameraStatus.Text = Ui("Kamera nije mogla da se pokrene.");
-            await DisplayAlertAsync("Greška kamere", ex.Message, "U redu");
+            await DisplayAlertAsync(Ui("Greška kamere"), ex.Message, Ui("U redu"));
         }
     }
 
@@ -345,7 +345,7 @@ public sealed class MainPage : ContentPage
         {
             if (_camera is not null) _camera.IsDetecting = false;
             if (_cameraStatus is not null) _cameraStatus.Text = Ui("QR kod je prepoznat. Kamera je pauzirana.");
-            if (_scanValue is not null) _scanValue.Text = Ui(value);
+            if (_scanValue is not null) _scanValue.Text = value;
             if (_scanAssessment is not null) _scanAssessment.Text = Ui(Assess(value));
         });
     }
@@ -375,7 +375,7 @@ public sealed class MainPage : ContentPage
             var decoded = results?.FirstOrDefault(result => !string.IsNullOrWhiteSpace(result.Value));
             if (decoded is null)
             {
-                await DisplayAlertAsync("QR nije pronađen", "Na slici nije pronađen čitljiv QR/bar-kod. Probaj originalnu sliku, ne zamućen screenshot ili isečak.", "U redu");
+                await DisplayAlertAsync(Ui("QR nije pronađen"), Ui("Na slici nije pronađen čitljiv QR/bar-kod. Probaj originalnu sliku, ne zamućen screenshot ili isečak."), Ui("U redu"));
                 return;
             }
 
@@ -386,7 +386,7 @@ public sealed class MainPage : ContentPage
         }
         catch (Exception ex)
         {
-            await DisplayAlertAsync("Uvoz nije uspeo", "Nije moguće obraditi izabranu sliku.\\n" + ex.Message, "U redu");
+            await DisplayAlertAsync(Ui("Uvoz nije uspeo"), Ui("Nije moguće obraditi izabranu sliku: ") + ex.Message, Ui("U redu"));
         }
     }
 
