@@ -14,19 +14,19 @@ permissions:
 jobs:
   build:
     name: Build and package Android APK
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 45
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Install .NET 10
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v5
         with:
           dotnet-version: 10.0.x
 
       - name: Install Java 17
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: "17"
@@ -68,13 +68,15 @@ jobs:
           cp "$APK" artifacts/ScamShield.apk
           file artifacts/ScamShield.apk
           unzip -t artifacts/ScamShield.apk
-          sha256sum artifacts/ScamShield.apk
+          sha256sum artifacts/ScamShield.apk | tee artifacts/ScamShield.apk.sha256
 
       - name: Upload APK build artifact
         uses: actions/upload-artifact@v4
         with:
           name: ScamShield-Android-APK
-          path: artifacts/ScamShield.apk
+          path: |
+            artifacts/ScamShield.apk
+            artifacts/ScamShield.apk.sha256
           if-no-files-found: error
           retention-days: 30
 
@@ -85,6 +87,8 @@ jobs:
           name: ScamShield Android build ${{ github.run_number }}
           prerelease: true
           generate_release_notes: true
-          files: artifacts/ScamShield.apk
+          files: |
+            artifacts/ScamShield.apk
+            artifacts/ScamShield.apk.sha256
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
