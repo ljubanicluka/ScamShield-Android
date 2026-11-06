@@ -34,7 +34,7 @@ public sealed class MainPage : ContentPage
     {
         Title = "ScamShield";
         NavigationPage.SetHasNavigationBar(this, false);
-        _name = Preferences.Get("profile_name", "korisnik");
+        _name = NormalizeUsername(Preferences.Get("profile_name", "korisnik"));
         _country = Preferences.Get("profile_country", "Srbija");
         _dark = Preferences.Get("dark_theme", false);
         _useCyrillic = Preferences.Get("use_cyrillic", false);
