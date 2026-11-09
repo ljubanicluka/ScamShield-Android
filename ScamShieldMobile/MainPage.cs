@@ -300,8 +300,13 @@ public sealed class MainPage : ContentPage
         _body.Add(new Label { Text = "Proveri sumnjiv link, poruku ili QR kod. Iskustva zajednice pomažu drugima da ne naprave istu grešku.", FontSize = 14, TextColor = Muted });
         var hero = Card();
         hero.Add(new Label { Text = "Tvoj bezbednosni pregled", FontSize = 17, FontAttributes = FontAttributes.Bold, TextColor = TextColor() });
-        hero.Add(new Label { Text = "Nema aktivnih upozorenja sačuvanih na ovom uređaju.", FontSize = 13, TextColor = Muted });
-        hero.Add(new Label { Text = $"Region: {_country}  •  lokalni demo", FontSize = 11, TextColor = Muted });
+        var liveAlertCount = _liveFeeds?.Items.Count ?? 0;
+        var liveStatusText = _liveFeeds is null
+            ? "Učitavaju se zvanična upozorenja..."
+            : liveAlertCount.ToString(CultureInfo.InvariantCulture) + " javnih objava pronađeno u povezanim izvorima";
+        hero.Add(new Label { Text = Ui(liveStatusText), FontSize = 13, TextColor = Muted });
+        var availableSources = _liveFeeds?.Sources.Count(source => source.IsAvailable) ?? 0;
+        hero.Add(new Label { Text = Ui("Dostupni izvori: " + availableSources.ToString(CultureInfo.InvariantCulture) + "/4"), FontSize = 11, TextColor = Muted });
         _body.Add(hero);
         var quick = new Grid { ColumnDefinitions = { new ColumnDefinition(GridLength.Star), new ColumnDefinition(GridLength.Star) }, ColumnSpacing = 10 };
         var qr = ActionButton("▦  Skeniraj QR", () => Navigate("qr"), true);
@@ -507,13 +512,45 @@ public sealed class MainPage : ContentPage
     private void BuildMap()
     {
         _body.Add(SectionLabel("REGIONALNI PREGLED"));
-        _body.Add(new Label { Text = "Gde se prevare prijavljuju", FontSize = 25, FontAttributes = FontAttributes.Bold, TextColor = TextColor() });
-        _body.Add(new Label { Text = "Ovo je demonstracioni prikaz, a ne mapa potvrđenih prijava uživo. Brojevi nisu predstavljeni kao stvarna statistika.", FontSize = 12, TextColor = Muted });
-        foreach (var row in new[] { ("Srbija", "SMS i lažne dostave"), ("Bosna i Hercegovina", "Lažni bankarski pozivi"), ("Crna Gora", "Phishing i lažne nagrade"), ("Severna Makedonija", "Dodatni regionalni pregled") })
+        _body.Add(new Label { Text = Ui("Pregled pokrivenosti izvorima"), FontSize = 25, FontAttributes = FontAttributes.Bold, TextColor = TextColor() });
+        _body.Add(new Label
         {
-            var card = Card(new Label { Text = row.Item1, FontSize = 17, FontAttributes = FontAttributes.Bold, TextColor = TextColor() }, new Label { Text = row.Item2, FontSize = 13, TextColor = Muted }, new Label { Text = "Izvor: prikaz primera • nema potvrđenog broja prijava", FontSize = 10, TextColor = Muted });
-            _body.Add(card);
+            Text = Ui("Ne prikazujemo lažne brojeve po gradovima. Ovi izvori objavljuju bezbednosna obaveštenja, ali ne pružaju jedinstvenu javnu statistiku prijava po gradu."),
+            FontSize = 12,
+            TextColor = Muted
+        });
+
+        if (_liveFeeds is null)
+        {
+            _body.Add(Card(new Label { Text = Ui("Učitavaju se izvori..."), FontSize = 13, TextColor = Muted }));
         }
+        else
+        {
+            foreach (var source in _liveFeeds.Sources)
+            {
+                var card = Card();
+                card.Add(new Label { Text = Ui(source.SourceName), FontSize = 16, FontAttributes = FontAttributes.Bold, TextColor = TextColor() });
+                card.Add(new Label { Text = Ui(source.Coverage), FontSize = 12, TextColor = Muted });
+                card.Add(new Label
+                {
+                    Text = Ui(source.IsAvailable
+                        ? "Dostupno • " + source.ItemCount.ToString(CultureInfo.InvariantCulture) + " objava"
+                        : "Trenutno nije dostupno"),
+                    FontSize = 11,
+                    TextColor = source.IsAvailable ? (_dark ? Yellow : Blue) : Muted
+                });
+                card.Add(LinkButton(Ui("Otvori izvor"), source.Url));
+                _body.Add(card);
+            }
+        }
+
+        _body.Add(new Label
+        {
+            Text = Ui("Važno: CERT Republike Srpske pokriva Republiku Srpsku, ne celu Bosnu i Hercegovinu. Za BiH još ne postoji jedinstven operativni državni CERT/CSIRT."),
+            FontSize = 11,
+            TextColor = Muted
+        });
+        _body.Add(ActionButton(Ui("Pogledaj najnovije objave"), () => Navigate("alerts"), true));
     }
 
     private void BuildFamily()
@@ -543,7 +580,8 @@ public sealed class MainPage : ContentPage
             Preferences.Remove("setup_complete");
             Content = BuildOnboarding();
         }, false));
-        _body.Add(new Label { Text = "Privatnost: profil i demo objave ostaju lokalno na uređaju. Nema naloga, sinhronizacije ni daljinskog nadzora u ovom APK-u.", FontSize = 11, TextColor = Muted });
+        _body.Add(new Label { Text = Ui("Profil ostaje lokalno. Javna upozorenja se preuzimaju sa navedenih izvora. Provereni linkovi, QR sadržaj, poruke i dokazi ne šalju se trećim stranama."), FontSize = 11, TextColor = Muted });
+        _body.Add(new Label { Text = Ui("Zajednički feed, nalozi i deljenje prijava još nisu povezani sa serverom."), FontSize = 11, TextColor = Muted });
     }
 
     private string Assess(string value)
