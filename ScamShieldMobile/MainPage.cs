@@ -181,6 +181,118 @@ public sealed class MainPage : ContentPage
 
     private string TabLabel(string tab) => tab switch { "home" => "Početna", "alerts" => "Upozorenja", "community" => "Zajednica", "qr" => "QR", "check" => "Provera", "map" => "Mapa", "family" => "Porodica", _ => "" };
 
+    private async Task RefreshLiveFeedsAsync()
+    {
+        if (_isRefreshingFeeds) return;
+        _isRefreshingFeeds = true;
+        try
+        {
+            _liveFeeds = await _feedService.RefreshAsync();
+        }
+        catch
+        {
+            // Per-source failures are represented by LiveFeedService.
+        }
+        finally
+        {
+            _isRefreshingFeeds = false;
+        }
+
+        if (Preferences.Get("setup_complete", false))
+            MainThread.BeginInvokeOnMainThread(() => Navigate(_currentTab));
+    }
+
+    private View BuildLiveAlertCard(LiveAlertItem item)
+    {
+        var card = Card();
+        card.Add(new Label
+        {
+            Text = Ui(item.SourceName + " • " + item.Coverage),
+            FontSize = 10,
+            FontAttributes = FontAttributes.Bold,
+            TextColor = _dark ? Yellow : Blue
+        });
+        card.Add(new Label
+        {
+            Text = Ui(item.Title),
+            FontSize = 16,
+            FontAttributes = FontAttributes.Bold,
+            TextColor = TextColor()
+        });
+        if (!string.IsNullOrWhiteSpace(item.Summary))
+        {
+            card.Add(new Label { Text = Ui(item.Summary), FontSize = 13, TextColor = TextColor() });
+        }
+
+        var dateText = item.PublishedAt.HasValue
+            ? item.PublishedAt.Value.ToLocalTime().ToString("dd.MM.yyyy HH:mm", CultureInfo.GetCultureInfo("sr-Latn-RS"))
+            : "Datum nije naveden u listi izvora";
+        card.Add(new Label { Text = Ui(dateText), FontSize = 10, TextColor = Muted });
+        card.Add(LinkButton(Ui("Otvori originalno obaveštenje"), item.Url));
+        return card;
+    }
+
+    private void BuildAlerts()
+    {
+        _body.Add(SectionLabel("ZVANIČNA UPOZORENJA"));
+        _body.Add(new Label { Text = Ui("Aktuelne objave regionalnih CERT/CIRT izvora"), FontSize = 24, FontAttributes = FontAttributes.Bold, TextColor = TextColor() });
+        _body.Add(new Label
+        {
+            Text = Ui("Vesti dolaze direktno sa navedenih izvora. To nisu prijave korisnika niti potvrda da je određeni broj ili link prevara."),
+            FontSize = 12,
+            TextColor = Muted
+        });
+        _body.Add(ActionButton(
+            _isRefreshingFeeds ? Ui("Osvežavanje...") : Ui("Osveži izvore"),
+            () => _ = RefreshLiveFeedsAsync(),
+            true));
+
+        if (_liveFeeds is null)
+        {
+            _body.Add(Card(new Label { Text = Ui("Učitavaju se javni izvori..."), FontSize = 14, TextColor = TextColor() }));
+            return;
+        }
+
+        if (_liveFeeds.IsUsingCachedData)
+        {
+            _body.Add(new Label
+            {
+                Text = Ui("Prikazuju se sačuvane objave jer trenutno osvežavanje nije vratilo podatke."),
+                FontSize = 12,
+                TextColor = Muted
+            });
+        }
+
+        _body.Add(SectionLabel("STATUS IZVORA"));
+        foreach (var source in _liveFeeds.Sources)
+        {
+            var sourceCard = Card();
+            sourceCard.Add(new Label { Text = Ui(source.SourceName), FontSize = 14, FontAttributes = FontAttributes.Bold, TextColor = TextColor() });
+            sourceCard.Add(new Label { Text = Ui(source.Coverage), FontSize = 11, TextColor = Muted });
+            var statusText = source.IsAvailable
+                ? "Dostupan • " + source.ItemCount.ToString(CultureInfo.InvariantCulture) + " objava"
+                : source.Message;
+            sourceCard.Add(new Label { Text = Ui(statusText), FontSize = 11, TextColor = source.IsAvailable ? (_dark ? Yellow : Blue) : Muted });
+            sourceCard.Add(LinkButton(Ui("Zvanični izvor"), source.Url));
+            _body.Add(sourceCard);
+        }
+
+        _body.Add(SectionLabel("OBJAVE"));
+        if (_liveFeeds.Items.Count == 0)
+        {
+            _body.Add(Card(new Label
+            {
+                Text = Ui("Trenutno nema dostupnih objava. Proveri status izvora ili otvori njihov zvanični sajt."),
+                FontSize = 13,
+                TextColor = Muted
+            }));
+            return;
+        }
+
+        foreach (var item in _liveFeeds.Items)
+            _body.Add(BuildLiveAlertCard(item));
+    }
+
     private void BuildHome()
     {
         _body.Add(new Label { Text = $"Zdravo, {_name}", FontSize = 14, FontAttributes = FontAttributes.Bold, TextColor = _dark ? Yellow : Blue });
