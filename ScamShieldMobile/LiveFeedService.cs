@@ -265,7 +265,7 @@ public sealed class LiveFeedService
 
         var withoutTags = Regex.Replace(value, "<[^>]+>", " ");
         var decoded = WebUtility.HtmlDecode(withoutTags);
-        return Regex.Replace(decoded, @"\\s+", " ").Trim();
+        return Regex.Replace(decoded, @"\s+", " ").Trim();
     }
 
     private static DateTimeOffset? ParseDate(string value)
