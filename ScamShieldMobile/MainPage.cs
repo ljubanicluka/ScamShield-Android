@@ -1,4 +1,3 @@
-using System.Collections.ObjectModel;
 using System.Globalization;
 using Microsoft.Maui.ApplicationModel;
 using Microsoft.Maui.Controls;
@@ -297,7 +296,7 @@ public sealed class MainPage : ContentPage
     {
         _body.Add(new Label { Text = $"Zdravo, {_name}", FontSize = 14, FontAttributes = FontAttributes.Bold, TextColor = _dark ? Yellow : Blue });
         _body.Add(new Label { Text = "Pre nego što klikneš — proveri.", FontSize = 26, FontAttributes = FontAttributes.Bold, TextColor = TextColor() });
-        _body.Add(new Label { Text = "Proveri sumnjiv link, poruku ili QR kod. Iskustva zajednice pomažu drugima da ne naprave istu grešku.", FontSize = 14, TextColor = Muted });
+        _body.Add(new Label { Text = Ui("Proveri sumnjiv link, poruku ili QR kod. Pogledaj najnovija zvanična regionalna upozorenja."), FontSize = 14, TextColor = Muted });
         var hero = Card();
         hero.Add(new Label { Text = "Tvoj bezbednosni pregled", FontSize = 17, FontAttributes = FontAttributes.Bold, TextColor = TextColor() });
         var liveAlertCount = _liveFeeds?.Items.Count ?? 0;
@@ -320,7 +319,7 @@ public sealed class MainPage : ContentPage
         _body.Add(ActionButton(Ui("Sva zvanična upozorenja"), () => Navigate("alerts"), false));
         var sources = Card();
         sources.Add(new Label { Text = "Zvanična upozorenja", FontSize = 17, FontAttributes = FontAttributes.Bold, TextColor = TextColor() });
-        sources.Add(new Label { Text = "Regionalna upozorenja se razlikuju po državi i načinu objavljivanja. Otvori izvor i proveri datum objave.", FontSize = 12, TextColor = Muted });
+        sources.Add(new Label { Text = Ui("Svaka objava je povezana sa originalnim izvorom. Ako izvor nije dostupan, aplikacija prikazuje status i prethodno sačuvane objave."), FontSize = 12, TextColor = Muted });
         sources.Add(LinkButton("Nacionalni CERT Srbije", "https://www.cert.rs/rs/obavestenja.html"));
         sources.Add(LinkButton("CIRT Crne Gore", "https://www.gov.me/gov-cirt"));
         sources.Add(LinkButton("CERT Republike Srpske", "https://cert.aikt.rs/"));
@@ -349,7 +348,7 @@ public sealed class MainPage : ContentPage
     {
         _body.Add(SectionLabel("QR ZAŠTITA"));
         _body.Add(new Label { Text = "Skeniraj pre nego što otvoriš.", FontSize = 25, FontAttributes = FontAttributes.Bold, TextColor = TextColor() });
-        _body.Add(new Label { Text = "Usmeri kameru ka QR kodu. Rezultat se prikazuje ovde; nijedan link se ne otvara automatski.", FontSize = 13, TextColor = Muted });
+        _body.Add(new Label { Text = Ui("Usmeri kameru ka QR kodu. Prikazaćemo originalni sadržaj; nijedan link, poziv ni plaćanje se ne pokreću automatski."), FontSize = 13, TextColor = Muted });
 
         var cameraBox = Card();
         _camera = new CameraBarcodeReaderView
@@ -470,12 +469,16 @@ public sealed class MainPage : ContentPage
             });
             if (file is null) return;
 
-            await using var stream = await file.OpenReadAsync();
+            await using var sourceStream = await file.OpenReadAsync();
+            using var imageBuffer = new MemoryStream();
+            await sourceStream.CopyToAsync(imageBuffer);
+            imageBuffer.Position = 0;
+
             var results = await BarcodeReader.DecodeAsync(
-                stream,
+                imageBuffer,
                 new BarcodeReaderOptions
                 {
-                    Formats = BarcodeFormats.All,
+                    Formats = BarcodeFormats.TwoDimensional,
                     AutoRotate = true,
                     TryHarder = true,
                     Multiple = true
@@ -503,7 +506,7 @@ public sealed class MainPage : ContentPage
     {
         _body.Add(SectionLabel("BRZA PROVERA"));
         _body.Add(new Label { Text = "Ne veruj poruci na prvi pogled.", FontSize = 25, FontAttributes = FontAttributes.Bold, TextColor = TextColor() });
-        _body.Add(new Label { Text = "Nalepi link, broj ili tekst poruke. Analiza se radi lokalno u ovoj demo verziji.", FontSize = 13, TextColor = Muted });
+        _body.Add(new Label { Text = Ui("Nalepi link, broj ili tekst poruke. Provera je lokalna heuristika i poređenje sa preuzetim zvaničnim obaveštenjima; ne postoji potvrda reputacije u realnom vremenu."), FontSize = 13, TextColor = Muted });
         var input = new Editor { Placeholder = "Nalepi sumnjiv link ili poruku ovde...", MinimumHeightRequest = 120, AutoSize = EditorAutoSizeOption.TextChanges, BackgroundColor = CardColor(), TextColor = TextColor() };
         var result = new Label { Text = "Rezultat će se pojaviti nakon provere.", FontSize = 14, TextColor = Muted };
         _body.Add(Card(input, ActionButton("Proveri sadržaj", () => result.Text = Ui(Assess(input.Text ?? "")), true), result));
@@ -690,8 +693,9 @@ public sealed class MainPage : ContentPage
                 picker.Title = SerbianLatinToCyrillic(picker.Title ?? "");
                 if (picker.ItemsSource is IEnumerable<string> items)
                 {
+                    var selected = picker.SelectedItem as string;
                     picker.ItemsSource = items.Select(SerbianLatinToCyrillic).ToList();
-                    if (picker.SelectedItem is string selected)
+                    if (!string.IsNullOrWhiteSpace(selected))
                         picker.SelectedItem = SerbianLatinToCyrillic(selected);
                 }
                 break;
@@ -729,19 +733,4 @@ public sealed class MainPage : ContentPage
     }
     private Button LinkButton(string text, string url) => ActionButton(text, async () => await Launcher.OpenAsync(url), false);
     private static Label MakeLabel(string text, double size, Color color) => new() { Text = text, FontSize = size, TextColor = color };
-}
-
-public sealed class CommunityPost
-{
-    public CommunityPost(string title, string body, string category, int votes, int comments, string city)
-    {
-        Title = title; Body = body; Category = category; Votes = votes; Comments = comments; City = city;
-    }
-    public string Title { get; }
-    public string Body { get; }
-    public string Category { get; }
-    public int Votes { get; set; }
-    public int Comments { get; }
-    public string City { get; }
-    public string Author => "korisnik";
 }
