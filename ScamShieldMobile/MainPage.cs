@@ -131,7 +131,7 @@ public sealed class MainPage : ContentPage
         _shell.Add(header, 0, 0);
 
         var nav = new HorizontalStackLayout { Padding = new Thickness(10, 7), Spacing = 7, HorizontalOptions = LayoutOptions.Fill };
-        foreach (var tab in new[] { ("home", "Početna"), ("community", "Zajednica"), ("qr", "QR"), ("check", "Provera"), ("map", "Mapa"), ("family", "Porodica") })
+        foreach (var tab in new[] { ("home", "Početna"), ("alerts", "Upozorenja"), ("community", "Zajednica"), ("qr", "QR"), ("check", "Provera"), ("map", "Mapa"), ("family", "Porodica") })
         {
             var b = new Button { Text = tab.Item2, FontSize = 11, Padding = new Thickness(11, 9), CornerRadius = 12, BackgroundColor = _currentTab == tab.Item1 ? Blue : CardColor(), TextColor = _currentTab == tab.Item1 ? Colors.White : TextColor() };
             b.Clicked += (_, _) => Navigate(tab.Item1);
@@ -144,7 +144,7 @@ public sealed class MainPage : ContentPage
         _shell.Add(bodyScroll, 0, 2);
 
         var footer = new Grid { Padding = new Thickness(16, 7), BackgroundColor = CardColor() };
-        footer.Add(new Label { Text = "DEMO VERZIJA  •  Provera ne otvara linkove automatski", FontSize = 10, TextColor = Muted, HorizontalTextAlignment = TextAlignment.Center, VerticalTextAlignment = TextAlignment.Center });
+        footer.Add(new Label { Text = Ui("Zvanični izvori • QR linkovi se ne otvaraju automatski"), FontSize = 10, TextColor = Muted, HorizontalTextAlignment = TextAlignment.Center, VerticalTextAlignment = TextAlignment.Center });
         _shell.Add(footer, 0, 3);
         _shell.BackgroundColor = PageColor();
         Content = _shell;
@@ -159,6 +159,7 @@ public sealed class MainPage : ContentPage
         switch (tab)
         {
             case "home": BuildHome(); break;
+            case "alerts": BuildAlerts(); break;
             case "community": BuildCommunity(); break;
             case "qr": BuildQr(); break;
             case "check": BuildCheck(); break;
@@ -178,7 +179,7 @@ public sealed class MainPage : ContentPage
         ApplyScriptToView(_shell);
     }
 
-    private string TabLabel(string tab) => tab switch { "home" => "Početna", "community" => "Zajednica", "qr" => "QR", "check" => "Provera", "map" => "Mapa", "family" => "Porodica", _ => "" };
+    private string TabLabel(string tab) => tab switch { "home" => "Početna", "alerts" => "Upozorenja", "community" => "Zajednica", "qr" => "QR", "check" => "Provera", "map" => "Mapa", "family" => "Porodica", _ => "" };
 
     private void BuildHome()
     {
