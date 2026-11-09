@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Globalization;
 using Microsoft.Maui.ApplicationModel;
 using Microsoft.Maui.Controls;
 using Microsoft.Maui.Storage;
@@ -18,7 +19,9 @@ public sealed class MainPage : ContentPage
     private readonly Color DarkCard = Color.FromArgb("#151F31");
     private Grid _shell = new();
     private VerticalStackLayout _body = new() { Spacing = 14, Padding = new Thickness(16, 12) };
-    private readonly ObservableCollection<CommunityPost> _posts = new();
+    private readonly LiveFeedService _feedService = new();
+    private LiveFeedSnapshot? _liveFeeds;
+    private bool _isRefreshingFeeds;
     private CameraBarcodeReaderView? _camera;
     private Label? _scanValue;
     private Label? _scanAssessment;
@@ -39,8 +42,6 @@ public sealed class MainPage : ContentPage
         _dark = Preferences.Get("dark_theme", false);
         _useCyrillic = Preferences.Get("use_cyrillic", false);
         _birthYear = Preferences.Get("birth_year", "");
-        SeedCommunity();
-
         if (Preferences.Get("setup_complete", false))
         {
             BuildShell();
@@ -50,13 +51,9 @@ public sealed class MainPage : ContentPage
         {
             Content = BuildOnboarding();
         }
-    }
 
-    private void SeedCommunity()
-    {
-        _posts.Add(new CommunityPost("Meni je stigla poruka kao od poste", "trazili su da platim neku dostavu preko linka. adresa je bila bas cudna pa nisam otvorio. jel jos neko dobio ovo?", "SMS / phishing", 18, 7, "Novi Sad"));
-        _posts.Add(new CommunityPost("poziv iz banke navodno", "lik zna moje ime i kaze da je sumnjiva transakcija. prekinuo sam i pozvao broj sa kartice. banka kaze da nisu zvali.", "Bankarske prevare", 31, 12, "Beograd"));
-        _posts.Add(new CommunityPost("Marketplace uplata unapred", "pazite kad vam posalju kurira a onda traze podatke kartice da bi vam uplatili novac. to nije potrebno za prodaju.", "Online kupovina", 24, 5, "Subotica"));
+        // Read-only public advisory requests; no profile or scanned content is uploaded.
+        _ = RefreshLiveFeedsAsync();
     }
 
     private View BuildOnboarding()
