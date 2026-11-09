@@ -307,14 +307,19 @@ public sealed class MainPage : ContentPage
         var qr = ActionButton("▦  Skeniraj QR", () => Navigate("qr"), true);
         var check = ActionButton("⌕  Proveri link", () => Navigate("check"), false);
         quick.Add(qr, 0, 0); quick.Add(check, 1, 0); _body.Add(quick);
-        _body.Add(SectionLabel("Šta se dešava u zajednici"));
-        _body.Add(MakePostCard(_posts[0], 0));
+        _body.Add(SectionLabel("Najnovija zvanična upozorenja"));
+        if (_liveFeeds?.Items.FirstOrDefault() is LiveAlertItem latest)
+            _body.Add(BuildLiveAlertCard(latest));
+        else
+            _body.Add(Card(new Label { Text = Ui("Učitavaju se javni izvori upozorenja."), FontSize = 13, TextColor = Muted }));
+        _body.Add(ActionButton(Ui("Sva zvanična upozorenja"), () => Navigate("alerts"), false));
         var sources = Card();
         sources.Add(new Label { Text = "Zvanična upozorenja", FontSize = 17, FontAttributes = FontAttributes.Bold, TextColor = TextColor() });
         sources.Add(new Label { Text = "Regionalna upozorenja se razlikuju po državi i načinu objavljivanja. Otvori izvor i proveri datum objave.", FontSize = 12, TextColor = Muted });
-        sources.Add(LinkButton("Nacionalni CERT Srbije", "https://cert.rs/"));
-        sources.Add(LinkButton("CIRT Crne Gore", "https://www.gov.me/cirt"));
-        sources.Add(LinkButton("CERT Republika Srpska", "https://cert.rs.ba/"));
+        sources.Add(LinkButton("Nacionalni CERT Srbije", "https://www.cert.rs/rs/obavestenja.html"));
+        sources.Add(LinkButton("CIRT Crne Gore", "https://www.gov.me/gov-cirt"));
+        sources.Add(LinkButton("CERT Republike Srpske", "https://cert.aikt.rs/"));
+        sources.Add(LinkButton("MKD-CIRT", "https://mkd-cirt.mk/"));
         _body.Add(sources);
         _body.Add(ActionButton("Podešavanja", () => Navigate("settings"), false));
     }
@@ -323,32 +328,16 @@ public sealed class MainPage : ContentPage
     {
         _body.Add(SectionLabel("ZAJEDNICA"));
         _body.Add(new Label { Text = "Ljudi pomažu ljudima.", FontSize = 26, FontAttributes = FontAttributes.Bold, TextColor = TextColor() });
-        _body.Add(new Label { Text = "Objave ispod su početni primeri za demonstraciju. U ovoj verziji nisu vidljive na drugim telefonima.", FontSize = 12, TextColor = Muted });
-        var editor = new Editor { Placeholder = "šta se desilo? napiši kako jeste...", AutoSize = EditorAutoSizeOption.TextChanges, MinimumHeightRequest = 85, BackgroundColor = CardColor(), TextColor = TextColor() };
-        var reportType = new Picker { Title = "Kategorija", ItemsSource = new List<string> { "SMS / phishing", "Bankarske prevare", "Online kupovina", "Pozivi", "Društvene mreže", "Drugo" }, SelectedIndex = 0, TextColor = TextColor() };
-        _body.Add(Card(new Label { Text = "Podeli iskustvo", FontSize = 16, FontAttributes = FontAttributes.Bold, TextColor = TextColor() }, editor, reportType, ActionButton("Objavi lokalni primer", () =>
+        _body.Add(new Label
         {
-            if (string.IsNullOrWhiteSpace(editor.Text)) return;
-            _posts.Insert(0, new CommunityPost("Novo iskustvo", editor.Text.Trim(), reportType.SelectedItem?.ToString() ?? "Ostalo", 1, 0, _country));
-            Navigate("community");
-        }, true)));
-        for (int i = 0; i < _posts.Count; i++) _body.Add(MakePostCard(_posts[i], i));
-    }
-
-    private View MakePostCard(CommunityPost post, int index)
-    {
-        var card = Card();
-        card.Add(new Label { Text = post.Category.ToUpperInvariant(), FontSize = 10, CharacterSpacing = 1, FontAttributes = FontAttributes.Bold, TextColor = _dark ? Yellow : Blue });
-        card.Add(new Label { Text = post.Title, FontSize = 17, FontAttributes = FontAttributes.Bold, TextColor = TextColor() });
-        card.Add(new Label { Text = post.Body, FontSize = 14, TextColor = TextColor() });
-        card.Add(new Label { Text = $"u/{post.Author}  •  {post.City}  •  primer objave", FontSize = 10, TextColor = Muted });
-        var actions = new HorizontalStackLayout { Spacing = 16 };
-        var vote = new Button { Text = $"▲  {post.Votes}", FontSize = 12, BackgroundColor = CardColor(), TextColor = TextColor(), CornerRadius = 12 };
-        vote.Clicked += (_, _) => { post.Votes++; vote.Text = $"▲  {post.Votes}"; };
-        var comments = new Button { Text = $"Komentari ({post.Comments})", FontSize = 12, BackgroundColor = CardColor(), TextColor = TextColor(), CornerRadius = 12 };
-        comments.Clicked += async (_, _) => await DisplayAlertAsync(Ui("Komentari"), Ui("Komentari su lokalni demonstracioni podaci. Online sinhronizacija još nije povezana."), Ui("U redu"));
-        actions.Add(vote); actions.Add(comments); card.Add(actions);
-        return card;
+            Text = Ui("Ovde će se prikazivati stvarne objave korisnika kada bude povezan zajednički server. Ne prikazujemo izmišljene profile, lažne glasove ni probne prijave."),
+            FontSize = 13,
+            TextColor = Muted
+        });
+        _body.Add(Card(
+            new Label { Text = Ui("Zajednički feed trenutno nije povezan."), FontSize = 16, FontAttributes = FontAttributes.Bold, TextColor = TextColor() },
+            new Label { Text = Ui("Tvoje objave se ne šalju nikome iz ove verzije aplikacije. Ne unosi podatke kartice, lozinke, kodove ili druge osetljive podatke."), FontSize = 12, TextColor = Muted },
+            ActionButton(Ui("Otvori zvanična upozorenja"), () => Navigate("alerts"), true)));
     }
 
     private void BuildQr()
