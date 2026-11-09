@@ -506,7 +506,7 @@ public sealed class MainPage : ContentPage
     {
         _body.Add(SectionLabel("BRZA PROVERA"));
         _body.Add(new Label { Text = "Ne veruj poruci na prvi pogled.", FontSize = 25, FontAttributes = FontAttributes.Bold, TextColor = TextColor() });
-        _body.Add(new Label { Text = Ui("Nalepi link, broj ili tekst poruke. Provera je lokalna heuristika i poređenje sa preuzetim zvaničnim obaveštenjima; ne postoji potvrda reputacije u realnom vremenu."), FontSize = 13, TextColor = Muted });
+        _body.Add(new Label { Text = Ui("Nalepi link, broj ili tekst poruke. Provera koristi lokalnu heuristiku; nije povezana sa bazom reputacije domena i ne može da potvrdi da je link bezbedan."), FontSize = 13, TextColor = Muted });
         var input = new Editor { Placeholder = "Nalepi sumnjiv link ili poruku ovde...", MinimumHeightRequest = 120, AutoSize = EditorAutoSizeOption.TextChanges, BackgroundColor = CardColor(), TextColor = TextColor() };
         var result = new Label { Text = "Rezultat će se pojaviti nakon provere.", FontSize = 14, TextColor = Muted };
         _body.Add(Card(input, ActionButton("Proveri sadržaj", () => result.Text = Ui(Assess(input.Text ?? "")), true), result));
