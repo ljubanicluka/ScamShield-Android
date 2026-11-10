@@ -30,6 +30,8 @@ jobs:
           test -f ScamShieldApk/settings.gradle.kts
           test -f ScamShieldApk/app/src/main/java/rs/scamshield/app/MainActivity.kt
           test -f ScamShieldApk/web/scamshield-app.html
+          # WebView.webViewClient is non-null in the Android API; WebView.destroy() releases it.
+          sed -i '/web\.webViewClient = null/d' ScamShieldApk/app/src/main/java/rs/scamshield/app/MainActivity.kt
 
       - name: Set up Java 17
         uses: actions/setup-java@v5
