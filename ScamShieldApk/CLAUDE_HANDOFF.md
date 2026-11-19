@@ -53,3 +53,18 @@ The CI workflow bundles `jsQR.js` into Android assets before building. Do not re
 - Verify each CERT/CIRT feed endpoint and parser against its current official source.
 - Consider a privacy-preserving backend only after defining consent, retention, moderation, abuse prevention, and data-protection requirements.
 - Add an explicit local backup/export feature with a warning that evidence may contain personal data.
+
+
+## Follow-up fixes (2026-11-19)
+
+The latest CI failure before these fixes was Kotlin compilation. ML Kit's `Barcode` import was corrected in `MainActivity.kt` and `QrScannerActivity.kt`. The old permission callback was replaced with the ComponentActivity Activity Result API. A denied camera permission now returns an explicit error to the QR page rather than leaving the user on a scanner-only screen. Camera frame creation/processing is guarded so exceptional frames are closed.
+
+The JavaScript smoke checker now discovers all static `data-a` actions and requires each to have a delegated handler. It also requires the bundled Android decoder reference to be `jsQR.js` and rejects an external jsQR CDN reference. The CI result following these commits must be checked before claiming the APK builds.
+
+Do not tell the user that camera/image QR is physically verified based only on compilation. Test camera permission grant/denial, rear-camera preview, autofocus, flashlight, scan result, cancel/reopen, and gallery imports (JPEG, PNG, HEIC, rotated images, compressed screenshots and no-QR images) on a real device. The QR contents must remain local and must not be opened automatically.
+
+## Current honest feature boundaries
+
+The local checker is heuristic and uses clearly labelled DEMO examples; it is not connected to a phone-number, URL, email, malware or phishing reputation provider. The “community” is a local notes view, not a server-backed community. The map has no verified city dataset. Report counts cannot be called independent or shared. Family controls are consent-based checklists and message generation, not remote device management. Device security is a guide, not antivirus. There is no VPN implementation.
+
+Before adding cloud features, design consent, minimization, abuse prevention, moderation, retention and deletion. Never invent fake reports, user accounts, map pins, source statuses or security verdicts.
