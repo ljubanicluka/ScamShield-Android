@@ -34,11 +34,11 @@ if (inlineCount === 0) {
 
 // Discover every action rendered in markup and require a matching delegated handler.
 const renderedActions = new Set(
-  [...html.matchAll(/\\bdata-a\\s*=\\s*["']?([A-Za-z][A-Za-z0-9_-]*)/g)]
+  [...html.matchAll(/\bdata-a\s*=\s*["']?([A-Za-z][A-Za-z0-9_-]*)/g)]
     .map((match) => match[1])
 );
 const handledActions = new Set(
-  [...html.matchAll(/\\ba\\s*===\\s*["']([A-Za-z][A-Za-z0-9_-]*)["']/g)]
+  [...html.matchAll(/\ba\s*===\s*["']([A-Za-z][A-Za-z0-9_-]*)["']/g)]
     .map((match) => match[1])
 );
 
@@ -55,11 +55,11 @@ for (const action of renderedActions) {
 }
 
 // Android bundles the decoder locally; remote CDN script loading is blocked by the WebView.
-if (!/<script\\b[^>]*\\bsrc\\s*=\\s*["']jsQR\\.js["']/i.test(html)) {
+if (!/<script\b[^>]*\bsrc\s*=\s*["']jsQR\.js["']/i.test(html)) {
   console.error("Bundled local jsQR.js script reference is missing.");
   process.exit(1);
 }
-if (/cdn\\.jsdelivr\\.net\\/npm\\/jsqr/i.test(html)) {
+if (/cdn\.jsdelivr\.net\/npm\/jsqr/i.test(html)) {
   console.error("An external jsQR CDN reference remains in the Android asset.");
   process.exit(1);
 }
