@@ -45,3 +45,26 @@
 
 ## Device matrix
 Test at minimum: one Xiaomi/Redmi device (the user's intended target), one Android emulator, and one other Android manufacturer/version if available. Record Android version, WebView version, device model, image format, and outcome. Do not mark a test complete based only on a successful Gradle build.
+
+
+## Additional QR regression checks after the 2026-11-19 fixes
+
+- [ ] Build #14 or later completes all Gradle Kotlin compilation, APK validation, and source-bundle upload steps.
+- [ ] Camera permission prompt appears only after the user taps the camera-scan button.
+- [ ] Denying permission returns to the QR page and shows a clear message; gallery selection remains available.
+- [ ] Granting permission starts the native rear-camera preview.
+- [ ] Scanner handles a blurry frame without freezing or leaving the camera analyzer blocked.
+- [ ] Scanner can be cancelled and reopened repeatedly.
+- [ ] Image picker cancellation is harmless and does not display a stale failure.
+- [ ] Gallery scanning reports decode errors clearly and does not auto-open scanned URLs.
+- [ ] The same QR is tested on a physical Xiaomi/Redmi phone and Android emulator.
+- [ ] The static web checker reports no rendered action without a matching click handler.
+- [ ] The built Android assets contain local `jsQR.js` and no external CDN reference.
+
+## Features explicitly not considered complete
+
+- [ ] Live phone/email/URL reputation source and an audited privacy model.
+- [ ] Shared reporting service with independent-report deduplication, rate limiting and moderation.
+- [ ] Verified scam map dataset with aggregation and privacy protections.
+- [ ] Real notification opt-in and settings.
+- [ ] Export/import backup with a clear warning about personally identifying evidence.
