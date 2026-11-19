@@ -32,17 +32,36 @@ if (inlineCount === 0) {
   process.exit(1);
 }
 
-const requiredActions = [
-  "lang", "cyr", "theme", "cn", "go", "home", "chk", "refreshNews",
-  "lk", "qr", "qi", "openSettings", "cp", "rep", "rd", "ck", "fm",
-  "qa", "qn", "qrs", "ev", "evd", "big", "del", "pw", "obn"
-];
+// Discover every action rendered in markup and require a matching delegated handler.
+const renderedActions = new Set(
+  [...html.matchAll(/\\bdata-a\\s*=\\s*["']?([A-Za-z][A-Za-z0-9_-]*)/g)]
+    .map((match) => match[1])
+);
+const handledActions = new Set(
+  [...html.matchAll(/\\ba\\s*===\\s*["']([A-Za-z][A-Za-z0-9_-]*)["']/g)]
+    .map((match) => match[1])
+);
 
-for (const action of requiredActions) {
-  if (!html.includes("a==='" + action + "'")) {
-    console.error("Missing click-handler branch for data-a=" + action);
+if (renderedActions.size === 0) {
+  console.error("No data-a actions were found in the interface.");
+  process.exit(1);
+}
+
+for (const action of renderedActions) {
+  if (!handledActions.has(action)) {
+    console.error("Rendered action has no click-handler branch: data-a=" + action);
     process.exit(1);
   }
+}
+
+// Android bundles the decoder locally; remote CDN script loading is blocked by the WebView.
+if (!/<script\\b[^>]*\\bsrc\\s*=\\s*["']jsQR\\.js["']/i.test(html)) {
+  console.error("Bundled local jsQR.js script reference is missing.");
+  process.exit(1);
+}
+if (/cdn\\.jsdelivr\\.net\\/npm\\/jsqr/i.test(html)) {
+  console.error("An external jsQR CDN reference remains in the Android asset.");
+  process.exit(1);
 }
 
 for (const hook of [
