@@ -1,15 +1,23 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-    <!-- Camera is used only for QR scanning. Internet access is limited in-app to native read-only public advisory downloads. -->
+    <!-- Camera access is used only by the explicit QR scanner screen. -->
     <uses-permission android:name="android.permission.CAMERA" />
+    <!-- Network access is used by the read-only official CERT/CIRT advisory fetcher. -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-feature android:name="android.hardware.camera" android:required="false" />
+
     <application
         android:allowBackup="false"
         android:usesCleartextTraffic="false"
         android:icon="@drawable/ic_launcher"
         android:label="ScamShield"
         android:theme="@android:style/Theme.DeviceDefault.NoActionBar">
+
+        <activity
+            android:name=".QrScannerActivity"
+            android:exported="false"
+            android:screenOrientation="portrait" />
+
         <activity
             android:name=".MainActivity"
             android:exported="true"
