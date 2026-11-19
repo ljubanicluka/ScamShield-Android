@@ -11,13 +11,13 @@ if (!fs.existsSync(path)) {
 }
 
 const html = fs.readFileSync(path, "utf8");
-const scripts = [...html.matchAll(/<script\\b([^>]*)>([\\s\\S]*?)<\\/script>/gi)];
+const scripts = [...html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)];
 let inlineCount = 0;
 
 for (const match of scripts) {
   const attrs = match[1] || "";
   const body = match[2] || "";
-  if (/\\bsrc\\s*=/.test(attrs) || !body.trim()) continue;
+  if (/\bsrc\s*=/.test(attrs) || !body.trim()) continue;
   inlineCount += 1;
   try {
     new vm.Script(body, { filename: path + "#inline-script-" + inlineCount });
@@ -57,7 +57,7 @@ for (const hook of [
   }
 }
 
-if (/target\\s*=\\s*["_']?_blank/i.test(html)) {
+if (/target\s*=\s*["_']?_blank/i.test(html)) {
   console.error('Found target="_blank" despite multiple WebView windows being disabled.');
   process.exit(1);
 }
