@@ -59,7 +59,7 @@ if (!/<script\b[^>]*\bsrc\s*=\s*["']jsQR\.js["']/i.test(html)) {
   console.error("Bundled local jsQR.js script reference is missing.");
   process.exit(1);
 }
-if (/cdn\.jsdelivr\.net\/npm\/jsqr/i.test(html)) {
+if (html.toLowerCase().includes("cdn.jsdelivr.net/npm/jsqr")) {
   console.error("An external jsQR CDN reference remains in the Android asset.");
   process.exit(1);
 }
