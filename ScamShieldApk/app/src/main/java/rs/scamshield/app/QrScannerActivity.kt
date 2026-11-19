@@ -80,7 +80,7 @@ class QrScannerActivity : ComponentActivity() {
         ) {
             startCamera()
         } else {
-            requestPermissions(arrayOf(Manifest.permission.CAMERA), REQUEST_CAMERA_PERMISSION)
+            cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
         }
     }
 
