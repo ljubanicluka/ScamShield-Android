@@ -15,6 +15,7 @@ import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.activity.ComponentActivity
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.camera.core.Camera
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageAnalysis
@@ -45,6 +46,23 @@ class QrScannerActivity : ComponentActivity() {
     private var activeCamera: Camera? = null
     private val resultSent = AtomicBoolean(false)
     private var torchEnabled = false
+
+    private val cameraPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) {
+            startCamera()
+        } else {
+            setResult(
+                Activity.RESULT_CANCELED,
+                Intent().putExtra(
+                    EXTRA_QR_ERROR,
+                    "Camera permission was denied. Return to ScamShield and choose a QR image from the gallery."
+                )
+            )
+            finish()
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -175,11 +193,23 @@ class QrScannerActivity : ComponentActivity() {
             return
         }
 
-        val image = InputImage.fromMediaImage(
-            mediaImage,
-            imageProxy.imageInfo.rotationDegrees
-        )
-        scanner.process(image)
+        val image = try {
+            InputImage.fromMediaImage(
+                mediaImage,
+                imageProxy.imageInfo.rotationDegrees
+            )
+        } catch (_: Exception) {
+            imageProxy.close()
+            return
+        }
+
+        val scanTask = try {
+            scanner.process(image)
+        } catch (_: Exception) {
+            imageProxy.close()
+            return
+        }
+        scanTask
             .addOnSuccessListener { barcodes ->
                 val payload = barcodes.firstNotNullOfOrNull { barcode ->
                     barcode.rawValue?.takeIf { it.isNotBlank() }
@@ -211,20 +241,6 @@ class QrScannerActivity : ComponentActivity() {
         torchButton.text = if (torchEnabled) "Flashlight: on" else "Flashlight: off"
     }
 
-    override fun onRequestPermissionsResult(
-        requestCode: Int,
-        permissions: Array<String>,
-        grantResults: IntArray
-    ) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        if (requestCode != REQUEST_CAMERA_PERMISSION) return
-        if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-            startCamera()
-        } else {
-            statusView.text = "Camera permission is required to scan. You can still choose a QR image from the gallery."
-            torchButton.isEnabled = false
-        }
-    }
 
     override fun onDestroy() {
         cameraProvider?.unbindAll()
@@ -236,6 +252,6 @@ class QrScannerActivity : ComponentActivity() {
 
     companion object {
         const val EXTRA_QR_TEXT = "rs.scamshield.app.QR_TEXT"
-        private const val REQUEST_CAMERA_PERMISSION = 71
+        const val EXTRA_QR_ERROR = "rs.scamshield.app.QR_ERROR"
     }
 }
