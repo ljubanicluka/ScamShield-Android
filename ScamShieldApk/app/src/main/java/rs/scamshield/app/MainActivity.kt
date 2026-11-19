@@ -230,17 +230,20 @@ class MainActivity : Activity() {
             }
 
             REQUEST_QR_CAMERA -> {
-                if (resultCode == RESULT_OK) {
-                    val payload = data?.getStringExtra(QrScannerActivity.EXTRA_QR_TEXT)
-                    if (!payload.isNullOrBlank()) {
+                val payload = data?.getStringExtra(QrScannerActivity.EXTRA_QR_TEXT)
+                val scanError = data?.getStringExtra(QrScannerActivity.EXTRA_QR_ERROR)
+                when {
+                    !payload.isNullOrBlank() ->
                         sendQrResult("onNativeQrScanResult", payload, null)
-                    } else {
+                    !scanError.isNullOrBlank() ->
+                        sendQrResult("onNativeQrScanResult", null, scanError)
+                    resultCode == RESULT_OK ->
                         sendQrResult(
                             "onNativeQrScanResult",
                             null,
                             "The scanner returned an empty result. Try again."
                         )
-                    }
+                    // A normal Cancel action returns RESULT_CANCELED with no error.
                 }
             }
 
