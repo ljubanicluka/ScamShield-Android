@@ -5,7 +5,7 @@ on:
   push:
     branches: [scamshield-apk-ci]
     paths:
-      - ".apk-source/**"
+      - "ScamShieldApk/**"
       - ".github/workflows/build-scamshield-kotlin-apk.yml"
 
 permissions:
@@ -20,25 +20,15 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Restore Kotlin project source archive
+      - name: Verify checked-in Kotlin project source
         shell: bash
         run: |
           set -euo pipefail
-          cat .apk-source/source-*.b64 | base64 --decode > ScamShieldApk-source.zip
-          unzip -t ScamShieldApk-source.zip
-          unzip -q ScamShieldApk-source.zip
           test -f ScamShieldApk/settings.gradle.kts
           test -f ScamShieldApk/app/src/main/java/rs/scamshield/app/MainActivity.kt
+          test -f ScamShieldApk/app/src/main/java/rs/scamshield/app/QrScannerActivity.kt
           test -f ScamShieldApk/web/scamshield-app.html
-          # WebView.webViewClient is non-null in the Android API; WebView.destroy() releases it.
-          sed -i '/web\.webViewClient = null/d' ScamShieldApk/app/src/main/java/rs/scamshield/app/MainActivity.kt
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add ScamShieldApk
-          if ! git diff --cached --quiet; then
-            git commit -m "Restore ScamShield Kotlin Android project source"
-            git push origin "HEAD:refs/heads/${GITHUB_REF_NAME}"
-          fi
+          test -f ScamShieldApk/CLAUDE_HANDOFF.md
 
       - name: Set up Java 17
         uses: actions/setup-java@v5
@@ -60,12 +50,12 @@ jobs:
       - name: Install Android SDK packages
         run: |
           yes | sdkmanager --licenses >/dev/null || true
-          sdkmanager "platforms;android-34" "build-tools;34.0.0" "platform-tools"
+          sdkmanager "platforms;android-36" "build-tools;36.0.0" "platform-tools"
 
       - name: Set up Gradle 8.9
         uses: gradle/actions/setup-gradle@v4
         with:
-          gradle-version: "8.9"
+          gradle-version: "8.13"
 
       - name: Bundle offline web app and QR decoder
         working-directory: ScamShieldApk
@@ -80,6 +70,17 @@ jobs:
             app/src/main/assets/index.html
           test -s app/src/main/assets/index.html
           test -s app/src/main/assets/jsQR.js
+
+      - name: Set up Node for static app checks
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Check web application scripts and action wiring
+        working-directory: ScamShieldApk
+        run: |
+          set -euo pipefail
+          node scripts/check-web.js app/src/main/assets/index.html
 
       - name: Prepare and validate optional persistent signing key
         env:
@@ -136,6 +137,19 @@ jobs:
           sha256sum ScamShield.apk | tee ScamShield.apk.sha256
           file ScamShield.apk
 
+      - name: Package clean source bundle for Claude
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p source-bundle
+          rsync -a --exclude='build/' --exclude='.gradle/' ScamShieldApk/ source-bundle/ScamShieldApk/
+          (
+            cd source-bundle
+            zip -qr ../ScamShield-Claude-Source.zip ScamShieldApk
+          )
+          test -s ScamShield-Claude-Source.zip
+          sha256sum ScamShield-Claude-Source.zip | tee ScamShield-Claude-Source.zip.sha256
+
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
@@ -143,6 +157,16 @@ jobs:
           path: |
             ScamShield.apk
             ScamShield.apk.sha256
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload Claude source bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: ScamShield-Claude-Source
+          path: |
+            ScamShield-Claude-Source.zip
+            ScamShield-Claude-Source.zip.sha256
           if-no-files-found: error
           retention-days: 30
 
@@ -156,5 +180,7 @@ jobs:
           files: |
             ScamShield.apk
             ScamShield.apk.sha256
+            ScamShield-Claude-Source.zip
+            ScamShield-Claude-Source.zip.sha256
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
